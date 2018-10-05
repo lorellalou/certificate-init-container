@@ -1,0 +1,5 @@
+*.csr
+*.crt
+*.key
+/vendor/
+/certificate-init-container
