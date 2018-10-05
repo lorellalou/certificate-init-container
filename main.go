@@ -21,12 +21,14 @@ import (
 	"time"
 
 	
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	
+	
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	cmv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	certmanagerv1alpha1 "github.com/jetstack/cert-manager/pkg/client/clientset/versioned/typed/certmanager/v1alpha1"
+	cmclientset "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
 )
 
 var (
@@ -58,6 +60,22 @@ func main() {
 	flag.StringVar(&serviceIPs, "service-ips", "", "service IP addresses that resolve to this Pod; comma separated")
 	flag.StringVar(&subdomain, "subdomain", "", "subdomain as defined by pod.spec.subdomain")
 	flag.Parse()
+
+	// creates the in-cluster config
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Fatalf("unable to get Kube Cluster Config : %s", err)
+	}
+	// creates the clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("unable to connect to Kube Cluster : %s", err)
+	}
+
+    cmClientSet, err := cmclientset.NewForConfig(config)
+    if err != nil {
+		log.Fatalf("unable to connect to Kube Cluster : %s", err)
+    }
 
 	// Gather the list of IP addresses for the certificate's IP SANs field which
 	// include:
@@ -126,8 +144,8 @@ func main() {
 		},
 	}
 
-	_, err := certmanagerv1alpha1.CertmanagerV1alpha1().Certificates(certificate.Namespace).Create(certificate)
-	if err != nil {
+	_, err1 := cmClientSet.CertmanagerV1alpha1().Certificates(certificate.Namespace).Create(certificate)
+	if err1 != nil {
 		log.Fatalf("unable to create the certificate : %s", err)
 	}
 	log.Printf("Successfully created Certificate %s", secretName)
@@ -135,7 +153,7 @@ func main() {
 
 	log.Println("waiting for secret...")
 	for {
-		_, err := corev1.SecretsGetter().Secrets(namespace).Get(secretName, metav1.GetOptions{})
+		_, err := clientset.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})
 		if err != nil {
 			log.Printf("unable to retrieve certificate secret (%s): %s", secretName, err)
 			time.Sleep(5 * time.Second)
