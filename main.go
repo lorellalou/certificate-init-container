@@ -144,18 +144,19 @@ func main() {
 		},
 	}
 
-	_, err1 := cmClientSet.CertmanagerV1alpha1().Certificates(certificate.Namespace).Create(certificate)
-	if err1 != nil {
-		log.Fatalf("unable to create the certificate : %s", err)
+	cmClientSet.CertmanagerV1alpha1().Certificates(certificate.Namespace).Delete(certificate.Name, &metav1.DeleteOptions{})
+	_, err2 := cmClientSet.CertmanagerV1alpha1().Certificates(certificate.Namespace).Create(certificate)
+	if err2 != nil {
+		log.Fatalf("unable to create the certificate : %s", err2)
 	}
 	log.Printf("Successfully created Certificate %s", secretName)
 
 
 	log.Println("waiting for secret...")
 	for {
-		_, err := clientset.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})
+		_, err := clientset.CoreV1().Secrets(namespace).Get(certificate.Name, metav1.GetOptions{})
 		if err != nil {
-			log.Printf("unable to retrieve certificate secret (%s): %s", secretName, err)
+			log.Printf("unable to retrieve certificate secret (%s): %s", certificate.Name, err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
