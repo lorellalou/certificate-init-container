@@ -3,3 +3,4 @@
 *.key
 /vendor/
 /certificate-init-container
+/certificate-init-container.image
