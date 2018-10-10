@@ -211,13 +211,17 @@ func updateSecret(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, 
 		return nil, err
 	}
 
-	
+	pkcs8Key,err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+		
 	keyStore := keystore.KeyStore{
 		"secretName": &keystore.PrivateKeyEntry{
 			Entry: keystore.Entry{
 				CreationDate: time.Now(),
 			},
-			PrivKey: secret.Data[v1.TLSPrivateKeyKey],
+			PrivKey: pkcs8Key,
 			CertChain: []keystore.Certificate{
 				keystore.Certificate{
 					Type: "X509",
