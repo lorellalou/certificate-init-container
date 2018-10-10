@@ -19,16 +19,19 @@ import (
 	"os"
 	"strings"
 	"time"
-
+	"bufio"
+	"bytes"
 	
 	
-	
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	cmv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	cmclientset "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
+	
+	"github.com/pavel-v-chernykh/keystore-go"
 )
 
 var (
@@ -87,7 +90,7 @@ func main() {
 		log.Fatal("invalid pod IP address")
 	}
 
-	ipaddresses := []net.IP{ip, net.ParseIP("127.0.0.1")}
+	ipaddresses := []string{podIP, "127.0.0.1"}
 
 	for _, s := range strings.Split(serviceIPs, ",") {
 		if s == "" {
@@ -97,7 +100,7 @@ func main() {
 		if ip.To4() == nil && ip.To16() == nil {
 			log.Fatal("invalid service IP address")
 		}
-		ipaddresses = append(ipaddresses, ip)
+		ipaddresses = append(ipaddresses, s)
 	}
 
 	// Gather a list of DNS names that resolve to this pod which include the
@@ -135,6 +138,7 @@ func main() {
 			CommonName: dnsNames[0],
 			SecretName: secretName,
 			DNSNames: dnsNames,
+			IPAddresses: ipaddresses,
 			KeyAlgorithm: cmv1alpha1.RSAKeyAlgorithm,
 			KeySize: 2048,			
 			IssuerRef: cmv1alpha1.ObjectReference{
@@ -164,7 +168,10 @@ func main() {
 		break
 
 	}
-
+	log.Printf("Successfully rerieved certificate secret %s", secretName)
+	
+	updateSecret(clientset, certificate, namespace)
+	
 	os.Exit(0)
 }
 
@@ -189,4 +196,50 @@ func podHeadlessDomainName(hostname, subdomain, namespace, domain string) string
 		return ""
 	}
 	return fmt.Sprintf("%s.%s.%s.svc.%s", hostname, subdomain, namespace, domain)
+}
+
+func updateSecret(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, namespace string) (*v1.Secret, error) {
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(crt.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	
+	keyStore := keystore.KeyStore{
+		"secretName": &keystore.PrivateKeyEntry{
+			Entry: keystore.Entry{
+				CreationDate: time.Now(),
+			},
+			PrivKey: secret.Data[v1.TLSPrivateKeyKey],
+			CertChain: []keystore.Certificate{
+				keystore.Certificate{
+					Type: "X509",
+					Content: secret.Data[v1.TLSCertKey],	
+				},
+			},
+		},
+	}
+
+	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
+	defer zeroing(password)
+	var b bytes.Buffer
+    writer := bufio.NewWriter(&b)
+    err = keystore.Encode(writer, keyStore, password)
+	if err != nil {
+		return nil, err
+	}
+	writer.Flush()
+	secret.Data["keystore.jks"] = b.Bytes()
+
+	secret, err = clientset.CoreV1().Secrets(namespace).Update(secret)
+	
+	if err != nil {
+		return nil, err
+	}
+	return secret, nil
+}
+
+func zeroing(s []byte) {
+	for i := 0; i < len(s); i++ {
+		s[i] = 0
+	}
 }

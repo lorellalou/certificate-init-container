@@ -14,8 +14,10 @@ require (
 	github.com/hashicorp/golang-lru v0.5.0 // indirect
 	github.com/jetstack/cert-manager v0.5.0
 	github.com/json-iterator/go v1.1.5 // indirect
+	github.com/lrolaz/cert-manager v0.5.1-0.20181010105321-af697b9f735f // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/pavel-v-chernykh/keystore-go v2.1.0+incompatible
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	golang.org/x/crypto v0.0.0-20181001203147-e3636079e1a4 // indirect
 	golang.org/x/oauth2 v0.0.0-20181003184128-c57b0facaced // indirect
@@ -25,7 +27,7 @@ require (
 	google.golang.org/appengine v1.2.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.1 // indirect
-	k8s.io/api v0.0.0-20180925152912-a191abe0b71e // indirect
+	k8s.io/api v0.0.0-20180925152912-a191abe0b71e
 	k8s.io/apimachinery v0.0.0-20181003114359-ed5594dcf47b
 	k8s.io/client-go v9.0.0+incompatible
 	k8s.io/kube-openapi v0.0.0-20180928202339-9dfdf9be683f // indirect
