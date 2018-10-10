@@ -22,6 +22,8 @@ import (
 	"bufio"
 	"bytes"
 	
+	"crypto/x509"
+	
 	
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -203,6 +205,12 @@ func updateSecret(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, 
 	if err != nil {
 		return nil, err
 	}
+	
+	key, err := x509.ParsePKCS1PrivateKey(secret.Data[v1.TLSPrivateKeyKey])
+	if err != nil {
+		return nil, err
+	}
+
 	
 	keyStore := keystore.KeyStore{
 		"secretName": &keystore.PrivateKeyEntry{
