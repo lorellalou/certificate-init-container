@@ -21,9 +21,8 @@ import (
 	"time"
 	"bufio"
 	"bytes"
-	
-	"crypto/x509"
-	
+
+	"encoding/pem"
 	
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -151,6 +150,7 @@ func main() {
 	}
 
 	cmClientSet.CertmanagerV1alpha1().Certificates(certificate.Namespace).Delete(certificate.Name, &metav1.DeleteOptions{})
+	clientset.CoreV1().Secrets(certificate.Namespace).Delete(certificate.Name, &metav1.DeleteOptions{})
 	_, err2 := cmClientSet.CertmanagerV1alpha1().Certificates(certificate.Namespace).Create(certificate)
 	if err2 != nil {
 		log.Fatalf("unable to create the certificate : %s", err2)
@@ -172,7 +172,15 @@ func main() {
 	}
 	log.Printf("Successfully rerieved certificate secret %s", secretName)
 	
-	updateSecret(clientset, certificate, namespace)
+	secret, err := updateSecret(clientset, certificate, namespace)
+	if err != nil {
+		log.Fatalf("unable to create the java keystore (%s): %s", certificate.Name, err)
+	}
+	
+	secret, err = clientset.CoreV1().Secrets(namespace).Update(secret)
+	if err != nil {
+		log.Fatalf("unable to save the java keystore (%s): %s", certificate.Name,err)
+	}
 	
 	os.Exit(0)
 }
@@ -205,29 +213,30 @@ func updateSecret(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, 
 	if err != nil {
 		return nil, err
 	}
-	
-	key, err := x509.ParsePKCS1PrivateKey(secret.Data[v1.TLSPrivateKeyKey])
-	if err != nil {
-		return nil, err
-	}
-
-	pkcs8Key,err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		return nil, err
-	}
+		
+	var certificates []keystore.Certificate
+	var buf []byte = secret.Data[v1.TLSCertKey]
+	var block *pem.Block
+	// loop over pem encoded data
+	for len(buf) > 0 {
+		block, buf = pem.Decode(buf)
+		if block == nil {
+			log.Fatal("invalid PEM data")
+		}
+		certificates = append(certificates, 
+			keystore.Certificate{
+				Type: "X509",
+				Content: block.Bytes,	
+			})
+	}		
 		
 	keyStore := keystore.KeyStore{
-		"secretName": &keystore.PrivateKeyEntry{
+		secretName: &keystore.PrivateKeyEntry{
 			Entry: keystore.Entry{
 				CreationDate: time.Now(),
 			},
-			PrivKey: pkcs8Key,
-			CertChain: []keystore.Certificate{
-				keystore.Certificate{
-					Type: "X509",
-					Content: secret.Data[v1.TLSCertKey],	
-				},
-			},
+			PrivKey: secret.Data[v1.TLSPrivateKeyKey],
+			CertChain: certificates,
 		},
 	}
 
@@ -242,11 +251,6 @@ func updateSecret(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, 
 	writer.Flush()
 	secret.Data["keystore.jks"] = b.Bytes()
 
-	secret, err = clientset.CoreV1().Secrets(namespace).Update(secret)
-	
-	if err != nil {
-		return nil, err
-	}
 	return secret, nil
 }
 
