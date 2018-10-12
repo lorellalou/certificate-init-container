@@ -21,7 +21,7 @@ import (
 	"time"
 	"bufio"
 	"bytes"
-
+	"io/ioutil"
 	"encoding/pem"
 	
 	v1 "k8s.io/api/core/v1"
@@ -63,6 +63,7 @@ func main() {
 	flag.StringVar(&serviceNames, "service-names", "", "service names that resolve to this Pod; comma separated")
 	flag.StringVar(&serviceIPs, "service-ips", "", "service IP addresses that resolve to this Pod; comma separated")
 	flag.StringVar(&subdomain, "subdomain", "", "subdomain as defined by pod.spec.subdomain")
+	flag.StringVar(&keystoreSecret, "keystore-secret", "", "The path where the Java Keystore should be written")
 	flag.Parse()
 
 	// creates the in-cluster config
@@ -172,15 +173,31 @@ func main() {
 	}
 	log.Printf("Successfully rerieved certificate secret %s", secretName)
 	
-	secret, err := updateSecret(clientset, certificate, namespace)
+	keystore, err := createJavaKeystore(clientset, certificate, namespace)
 	if err != nil {
 		log.Fatalf("unable to create the java keystore (%s): %s", certificate.Name, err)
 	}
 	
-	secret, err = clientset.CoreV1().Secrets(namespace).Update(secret)
+	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
+	defer zeroing(password)
+	var b bytes.Buffer
+    writer := bufio.NewWriter(&b)
+    err = keystore.Encode(writer, keystore, password)
 	if err != nil {
-		log.Fatalf("unable to save the java keystore (%s): %s", certificate.Name,err)
+		log.Fatalf("unable to create the java keystore (%s): %s", certificate.Name, err)
 	}
+	writer.Flush()
+	
+	_, err := clientset.CoreV1().Secrets(namespace).Get(certificate.Name, metav1.GetOptions{})
+	if err != nil {
+		log.Printf("unable to retrieve certificate secret (%s): %s", certificate.Name, err)
+		time.Sleep(5 * time.Second)
+		continue
+	}
+	
+	
+	secret.Data["keystore.jks"] = b.Bytes()
+
 	
 	os.Exit(0)
 }
@@ -208,7 +225,7 @@ func podHeadlessDomainName(hostname, subdomain, namespace, domain string) string
 	return fmt.Sprintf("%s.%s.%s.svc.%s", hostname, subdomain, namespace, domain)
 }
 
-func updateSecret(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, namespace string) (*v1.Secret, error) {
+func createJavaKeystore(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, namespace string, keystore string) (*keystore.KeyStore, error) {
 	secret, err := clientset.CoreV1().Secrets(namespace).Get(crt.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -239,17 +256,6 @@ func updateSecret(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, 
 			CertChain: certificates,
 		},
 	}
-
-	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
-	defer zeroing(password)
-	var b bytes.Buffer
-    writer := bufio.NewWriter(&b)
-    err = keystore.Encode(writer, keyStore, password)
-	if err != nil {
-		return nil, err
-	}
-	writer.Flush()
-	secret.Data["keystore.jks"] = b.Bytes()
 
 	return secret, nil
 }
