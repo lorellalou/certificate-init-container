@@ -205,6 +205,15 @@ func main() {
 	}
 	keystoreSecret.Data[fmt.Sprintf("%s.jks", certificate.Name)] = b.Bytes()
 
+	// if it is a new resource
+	if secret.SelfLink == "" {
+		secret, err = clientset.CoreV1().Secrets(namespace).Create(keystoreSecret)
+	} else {
+		secret, err = clientset.CoreV1().Secrets(namespace).Update(keystoreSecret)
+	}
+	if err != nil {
+		log.Fatalf("unable to create or update the java keystore (%s): %s", keystoreSecretName, err)
+	}
 	
 	os.Exit(0)
 }
