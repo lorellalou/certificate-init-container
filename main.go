@@ -22,6 +22,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/pem"
+	"math/rand"
 	
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -179,9 +180,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to create the java keystore (%s): %s", certificate.Name, err)
 	}
-	
-	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
-	defer zeroing(password)
+	// generate random password
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	password := make([]byte, 10)
+    for i := range password {
+        password[i] = letterBytes[rand.Int63() % int64(len(letterBytes))]
+    }
 	var b bytes.Buffer
     writer := bufio.NewWriter(&b)
     err = keystore.Encode(writer, *keyStore, password)
@@ -204,12 +208,13 @@ func main() {
 		}
 	}
 	keystoreSecret.Data[fmt.Sprintf("%s.jks", certificate.Name)] = b.Bytes()
+	keystoreSecret.Data[fmt.Sprintf("%s.password", certificate.Name)] = password
 
 	// if it is a new resource
-	if secret.SelfLink == "" {
-		secret, err = clientset.CoreV1().Secrets(namespace).Create(keystoreSecret)
+	if keystoreSecret.SelfLink == "" {
+		keystoreSecret, err = clientset.CoreV1().Secrets(namespace).Create(keystoreSecret)
 	} else {
-		secret, err = clientset.CoreV1().Secrets(namespace).Update(keystoreSecret)
+		keystoreSecret, err = clientset.CoreV1().Secrets(namespace).Update(keystoreSecret)
 	}
 	if err != nil {
 		log.Fatalf("unable to create or update the java keystore (%s): %s", keystoreSecretName, err)
@@ -276,8 +281,3 @@ func createJavaKeystore(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certifi
 	return &keyStore, nil
 }
 
-func zeroing(s []byte) {
-	for i := 0; i < len(s); i++ {
-		s[i] = 0
-	}
-}
