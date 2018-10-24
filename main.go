@@ -38,6 +38,7 @@ import (
 )
 
 var (
+	commonName	       string
 	additionalDNSNames string
 	issuerName         string
 	issuerKind         string
@@ -54,6 +55,7 @@ var (
 )
 
 func main() {
+	flag.StringVar(&commonName, "common-name", "", "the certificate common name")
 	flag.StringVar(&additionalDNSNames, "additional-dnsnames", "", "additional dns names; comma separated")
 	flag.StringVar(&issuerName, "issuer-name", "", "The Cert-Manager Issuer name")
 	flag.StringVar(&issuerKind, "issuer-kind", "", "The Cert-Manager Issuer name")
@@ -90,12 +92,15 @@ func main() {
 	//   - the pod IP address
 	//   - 127.0.0.1 for localhost access
 	//   - each service IP address that maps to this pod
-	ip := net.ParseIP(podIP)
-	if ip.To4() == nil && ip.To16() == nil {
-		log.Fatal("invalid pod IP address")
-	}
+	ipaddresses := []string{"127.0.0.1"}
 
-	ipaddresses := []string{podIP, "127.0.0.1"}
+	if podIP != "" {
+		ip := net.ParseIP(podIP)
+		if ip.To4() == nil && ip.To16() == nil {
+			log.Fatal("invalid pod IP address")
+		}
+		ipaddresses = append(ipaddresses, podIP)
+	}
 
 	for _, s := range strings.Split(serviceIPs, ",") {
 		if s == "" {
@@ -140,7 +145,7 @@ func main() {
 			Name:      secretName,
 		},
 		Spec: cmv1alpha1.CertificateSpec{
-			CommonName: dnsNames[0],
+			CommonName: commonName,
 			SecretName: secretName,
 			DNSNames: dnsNames,
 			IPAddresses: ipaddresses,
@@ -224,7 +229,10 @@ func main() {
 }
 
 func defaultDNSNames(ip, hostname, subdomain, namespace, clusterDomain string) []string {
-	ns := []string{podDomainName(ip, namespace, clusterDomain)}
+	ns := []string{}
+	if ip != "" {
+		ns = append(ns, podDomainName(ip, namespace, clusterDomain))
+	}
 	if hostname != "" && subdomain != "" {
 		ns = append(ns, podHeadlessDomainName(hostname, subdomain, namespace, clusterDomain))
 	}
