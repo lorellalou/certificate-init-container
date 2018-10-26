@@ -3,16 +3,16 @@ package main_test
 
 
 import (
-	"encoding/pem"
 	"github.com/pavel-v-chernykh/keystore-go"
 	"log"
 	"os"
 	"time"
 	"testing"
+	"crypto/x509"
+	"encoding/pem"
 )
 
-const testKey = `
------BEGIN RSA PRIVATE KEY-----
+const testKey = `-----BEGIN RSA PRIVATE KEY-----
 MIIEogIBAAKCAQEAtyKw7ZrCXEOzw4h7POuC1bFqC0Ubx3Bcq000doI7/nfyoT+z
 tKec0HrDPJMOTpjjZxuPR5tnE+rvSBX3k9yX47zWI5JBdPqrZkq+T1ephnfHJHX+
 NRBR4c2xgGYhFuMWcX7h5mY3gSnLzKY9/o3/Kcf3kZ7HYfz+SFL1lIK4r7ByITOo
@@ -38,8 +38,7 @@ wkWn+kBXmQdgqopLYF2ApRRSQGRcaKKD/8lBu2U7CziHexq/I0sGVXOkMsB5roQL
 0A0hAoGAUX0+wBn4ZWP4O7Zrqdn+MuHMBejzQ7T4LRNCJbWE/hP5u7IsprEjhQYJ
 CXr3GTgwjktLeq4OZefpNHbz/xgXxQj5Jn8m4W+5p0XTH2uOwdT17R8AXA0pEyYb
 rH5wlOeLE0V4U+ILSk9UcpkNz2RFqxrEyo/ctgTPIVEAAWHUgQ8=
------END RSA PRIVATE KEY-----
-`
+-----END RSA PRIVATE KEY-----`
 
 const testCert = `
 -----BEGIN CERTIFICATE-----
@@ -90,6 +89,17 @@ cdau/SfhGclIc8TlPPKJ
 // TestDefault is a placeholder test so CI passes.
 func TestDefault(t *testing.T) {
 
+	pcks1KeyBlock, _ := pem.Decode([]byte(testKey))
+	pkcs1Key, err := x509.ParsePKCS1PrivateKey(pcks1KeyBlock.Bytes)
+	if err != nil {
+		log.Fatal("error parsing rsa private key", err)
+	}
+	pkcs8Key, err := x509.MarshalPKCS8PrivateKey(pkcs1Key)
+	if err != nil {
+		log.Fatal("error parsing rsa private key", err)
+	}
+
+
 	var buf []byte = []byte(testCert)
 	var block *pem.Block
 	var certificates []keystore.Certificate
@@ -99,6 +109,7 @@ func TestDefault(t *testing.T) {
 		if block == nil {
 			log.Fatal("invalid PEM data")
 		}
+
 		certificates = append(certificates, 
 			keystore.Certificate{
 				Type: "X509",
@@ -113,7 +124,7 @@ func TestDefault(t *testing.T) {
 			Entry: keystore.Entry{
 				CreationDate: time.Now(),
 			},
-			PrivKey: []byte(testKey),
+			PrivKey: pkcs8Key,
 			CertChain: certificates,	
 		},
 	}

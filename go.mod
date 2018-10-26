@@ -19,6 +19,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pavel-v-chernykh/keystore-go v2.1.0+incompatible
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
+	github.com/youmark/pkcs8 v0.0.0-20180804191018-ba8038b57153
 	golang.org/x/crypto v0.0.0-20181001203147-e3636079e1a4 // indirect
 	golang.org/x/oauth2 v0.0.0-20181003184128-c57b0facaced // indirect
 	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f // indirect

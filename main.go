@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"encoding/pem"
 	"math/rand"
+	"crypto/x509"	
 	
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -260,6 +261,16 @@ func createJavaKeystore(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certifi
 		return nil, err
 	}
 		
+	pcks1KeyBlock, _ := pem.Decode(secret.Data[v1.TLSPrivateKeyKey])
+	pkcs1Key, err := x509.ParsePKCS1PrivateKey(pcks1KeyBlock.Bytes)
+	if err != nil {
+		log.Fatal("error parsing rsa private key", err)
+	}
+	pkcs8Key, err := x509.MarshalPKCS8PrivateKey(pkcs1Key)
+	if err != nil {
+		log.Fatal("error converting private key to PKCS8", err)
+	}		
+		
 	var certificates []keystore.Certificate
 	var buf []byte = secret.Data[v1.TLSCertKey]
 	var block *pem.Block
@@ -281,7 +292,7 @@ func createJavaKeystore(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certifi
 			Entry: keystore.Entry{
 				CreationDate: time.Now(),
 			},
-			PrivKey: secret.Data[v1.TLSPrivateKeyKey],
+			PrivKey: pkcs8Key,
 			CertChain: certificates,
 		},
 	}
