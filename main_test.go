@@ -86,9 +86,45 @@ cdau/SfhGclIc8TlPPKJ
 -----END CERTIFICATE-----
 `
 
+const caCert = `
+-----BEGIN CERTIFICATE-----
+MIIFMTCCAxmgAwIBAgIRAPSm5CpQbad4MfP8NM2jUK4wDQYJKoZIhvcNAQELBQAw
+MjEYMBYGA1UEChMPSGFzaGlDb3JwIFZhdWx0MRYwFAYDVQQDEw1jbHVzdGVyLmxv
+Y2FsMB4XDTE4MTAxNjE0MjIxNloXDTE5MTAxNjE0MjIxNlowMjEYMBYGA1UEChMP
+SGFzaGlDb3JwIFZhdWx0MRYwFAYDVQQDEw1jbHVzdGVyLmxvY2FsMIICIjANBgkq
+hkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAv9iDnuSctdsnp7mOUm0cj68p+u90rKVJ
+82DVJtJYtroMS2xjvQ8te5/NZM0H3YFSB/lnMkn+6BVbbWxku1Hov8vD7SQsBakw
+O7ncZf77vfBowGlxfN3YYwC5aDHyf7aPmZnq1KLyYcdz/KGcPf7OKdfSEPCDylcJ
+XwBpKJ2te3HpFuKIj7tIVa+UNlj/o3x04GTcPTPHiRKZg0N92x8R4fwsPhCC81Yt
+iLMvaqCJ1zSl3nSa3JJTL8j9iwO3z46ES8wVpua32Ieb2A2mVh9OssOF+Re4Xoas
+2r+5dfdCmwJnk+V3uIYdzTg4Wz0Rh8E3CwZgJtXQMM2j+pf5bkoZLCGHbCv70ElC
+VZEnSWwmxJVazLD7Mu9GjkDNoqjy6/uMJGyvKyoRGB1SwGyi86zeKZTa8s23XYSO
+M0qgVEnRAf13PV1QhpDwexS1aYuf/BvD6sHzRGTD95HlWhZcfcmioQF4vMhbhQt/
+78ME6a53foZ/Ci1MgBEvv1QSiGMr+iUlclAyWfPWQFUlGLVTGL8qR//+m5Dmi9oy
+IXeE2PQG8HERl5mNnh7FDw5GjwzXG8P5qK8eSJ5DxL2JBJIl2nfaXmD0LXkOaB99
+ftLvyO6OYb0L1l4hCR3OzIj5Uw+/KKzbxkyl6Nf0B76wADtg/bhmwqCVxO5FEGCZ
+nFZ0/DOWNrsCAwEAAaNCMEAwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB/wQFMAMB
+Af8wHQYDVR0OBBYEFKU0jLOIq/QZ16lp0YWkWxGztCNbMA0GCSqGSIb3DQEBCwUA
+A4ICAQCUIwfmuidulbsLfIeD9IPZfBd517gGYBjXmiBY3w1g3RyYQNqd50S1ROqk
+OZcXBQt7tONA0lo5eUS6+4SAOV7zh+oBJ44JeLC5s/bcAoLpVm5yqiRUFJxJlD+Q
+VnOwCixtz1xUb8QlPmROUV4c7ZpIcq5EzyZvl7XwQfv1D7lNdf/wokP7IDaKeF7S
+ZppSgmZ4JG5kd2Aglbl2Hidlp6zXdQo3HctORW575RVizWfMtuRgsK08F68iPbhJ
+mMpm9nxpDUorjEHehvwFAuTmv1iVTHTAx7DZMw7ZngZzpH8oSaid1FJYHSQHAYY1
+A5ViIpJCZTRHp3nAd5XfgOypLH5JYvBVpMCcGye5kfAJU+MEIUgErf7GFwR73KhU
+zymPb7oTj1GNGKU2+FF/n5tijdAp0/B5zXj6ZlrmhVSMqhfy9gqGjf7GJ8qNX78i
+gMsCCRdc0iJtWf4eUBbDKN3uiiG03zWmut0+TyzfK4I+D5O+/8RMB/8VRvP/mrC7
+4NdqUDuwZuGto75nqlfYbldqfsEyWMxI6lKJZapdUnZIjB0sn5zH01caWj5x3Pum
+BJn4CvcNgpc1BqHsDcfGxcySDiz1IswVxtE2rMudA+VhcF3N9ytZAYeZcSmWSOx9
+zCxw/J3ytXfGFmeP+xn9gzbSi2vBV543+DdQzsWw1AKgqVe/bw==
+-----END CERTIFICATE-----
+`
+
 // TestDefault is a placeholder test so CI passes.
 func TestDefault(t *testing.T) {
 
+	caBlock, _ := pem.Decode([]byte(caCert))
+
+	
 	pcks1KeyBlock, _ := pem.Decode([]byte(testKey))
 	pkcs1Key, err := x509.ParsePKCS1PrivateKey(pcks1KeyBlock.Bytes)
 	if err != nil {
@@ -120,6 +156,15 @@ func TestDefault(t *testing.T) {
 
 	// Load the configuration file
 	keyStore := keystore.KeyStore{
+		"ca": &keystore.TrustedCertificateEntry{
+			Entry: keystore.Entry{
+				CreationDate: time.Now(),
+			},
+			Certificate: keystore.Certificate{
+				Type: "X509",
+				Content: caBlock.Bytes,	
+			},
+		},		
 		"alias": &keystore.PrivateKeyEntry{
 			Entry: keystore.Entry{
 				CreationDate: time.Now(),
