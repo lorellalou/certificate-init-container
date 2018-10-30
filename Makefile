@@ -9,7 +9,7 @@ GINKGO = ginkgo -p
 
 NAME = lrolaz/certificate-init-container
 REGISTRY = index.docker.io
-VERSION=0.0.21
+VERSION=0.0.24
 TAG = $(REGISTRY)/$(NAME):$(VERSION)
 
 # TODO: Simplify this once ./... ignores ./vendor
