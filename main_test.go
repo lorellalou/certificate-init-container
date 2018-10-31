@@ -10,6 +10,7 @@ import (
 	"testing"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 )
 
 const testKey = `-----BEGIN RSA PRIVATE KEY-----
@@ -173,6 +174,18 @@ func TestDefault(t *testing.T) {
 			CertChain: certificates,	
 		},
 	}
+
+	for i, cert := range certificates {
+        if i == 0 {
+            continue
+        }
+        keyStore[fmt.Sprintf("intermediate-%d", i)] = &keystore.TrustedCertificateEntry{
+			Entry: keystore.Entry{
+				CreationDate: time.Now(),
+			},
+			Certificate: cert,
+        }
+    }
 
 	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
 	defer zeroing(password)

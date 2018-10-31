@@ -327,6 +327,18 @@ func createJavaKeystore(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certifi
 		},
 	}
 
+	for i, cert := range certificates {
+        if i == 0 {
+            continue
+        }
+        trustStore[fmt.Sprintf("intermediate-%d", i)] = &keystore.TrustedCertificateEntry{
+			Entry: keystore.Entry{
+				CreationDate: time.Now(),
+			},
+			Certificate: cert,
+        }
+    }
+
 	return &keyStore, &trustStore, nil
 }
 

@@ -7,9 +7,9 @@ DEP = dep
 DOCKER = docker
 GINKGO = ginkgo -p
 
-NAME = lrolaz/certificate-init-container
-REGISTRY = index.docker.io
-VERSION=0.0.24
+NAME = kube-kafka-labo/certificate-init-container
+REGISTRY = eu.gcr.io
+VERSION=0.0.25
 TAG = $(REGISTRY)/$(NAME):$(VERSION)
 
 # TODO: Simplify this once ./... ignores ./vendor
