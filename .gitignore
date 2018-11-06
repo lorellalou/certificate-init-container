@@ -4,3 +4,4 @@
 /vendor/
 /certificate-init-container
 /certificate-init-container.image
+/keystore.jks
