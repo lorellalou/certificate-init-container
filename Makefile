@@ -9,7 +9,7 @@ GINKGO = ginkgo -p
 
 NAME = kube-kafka-labo/certificate-init-container
 REGISTRY = eu.gcr.io
-VERSION=0.0.25
+VERSION=0.0.26
 TAG = $(REGISTRY)/$(NAME):$(VERSION)
 
 # TODO: Simplify this once ./... ignores ./vendor

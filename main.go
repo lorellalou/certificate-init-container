@@ -37,6 +37,10 @@ import (
 	"github.com/pavel-v-chernykh/keystore-go"
 )
 
+const (
+	TLSCAKey = "ca.crt"
+)
+
 var (
 	commonName	       string
 	additionalDNSNames string
@@ -52,7 +56,6 @@ var (
 	serviceNames       string
 	subdomain          string
 	keystoreDir        string
-	caSecretName       string
 )
 
 func main() {
@@ -70,7 +73,6 @@ func main() {
 	flag.StringVar(&serviceIPs, "service-ips", "", "service IP addresses that resolve to this Pod; comma separated")
 	flag.StringVar(&subdomain, "subdomain", "", "subdomain as defined by pod.spec.subdomain")
 	flag.StringVar(&keystoreDir, "keystore-dir", "/etc/tls/keystore.jks", "The path where the Java Keystore should be written")
-	flag.StringVar(&caSecretName, "ca-secret-name", "", "The secret where the CA Certificate is stored")
 	flag.Parse()
 
 	// creates the in-cluster config
@@ -183,7 +185,7 @@ func main() {
 	}
 	log.Printf("Successfully rerieved certificate secret %s", secretName)
 	
-	keyStore, trustStore, err := createJavaKeystore(clientset, certificate, namespace, caSecretName)
+	keyStore, trustStore, err := createJavaKeystore(clientset, certificate, namespace)
 	if err != nil {
 		log.Fatalf("unable to create the java keystore (%s): %s", certificate.Name, err)
 	}
@@ -257,18 +259,13 @@ func podHeadlessDomainName(hostname, subdomain, namespace, domain string) string
 	return fmt.Sprintf("%s.%s.%s.svc.%s", hostname, subdomain, namespace, domain)
 }
 
-func createJavaKeystore(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, namespace string, caSecretName string) (*keystore.KeyStore, *keystore.KeyStore, error) {
+func createJavaKeystore(clientset *kubernetes.Clientset, crt *cmv1alpha1.Certificate, namespace string) (*keystore.KeyStore, *keystore.KeyStore, error) {
 	secret, err := clientset.CoreV1().Secrets(namespace).Get(crt.Name, metav1.GetOptions{})
-	if err != nil {
-		return nil, nil, err
-	}
-		
-	caSecret, err := clientset.CoreV1().Secrets(namespace).Get(caSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}		
 	
-	caBlock, _ := pem.Decode(caSecret.Data[v1.TLSCertKey])
+	caBlock, _ := pem.Decode(secret.Data[TLSCAKey])
 		
 	pcks1KeyBlock, _ := pem.Decode(secret.Data[v1.TLSPrivateKeyKey])
 	pkcs1Key, err := x509.ParsePKCS1PrivateKey(pcks1KeyBlock.Bytes)
